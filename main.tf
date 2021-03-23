@@ -61,7 +61,7 @@ resource "aws_autoscaling_group" "circleci_runner" {
 
   dynamic "tag" {
     for_each = var.extra_tags
-		
+
     content {
       key                 = tag.key
       value               = tag.value
@@ -82,19 +82,19 @@ resource "aws_launch_template" "circleci_runner" {
   block_device_mappings {
     device_name = "/dev/xvda" #this is usally the root volume mount point
     ebs {
-      volume_size = var.root_volume_size
-      volume_type = var.root_volume_type
+      volume_size           = var.root_volume_size
+      volume_type           = var.root_volume_type
       delete_on_termination = "true"
     }
   }
 
-  image_id = data.aws_ami.amazon_linux_2.id
+  image_id      = data.aws_ami.amazon_linux_2.id
   instance_type = var.instance_size
-  key_name = var.key_name != "" ? var.key_name : null
+  key_name      = var.key_name != "" ? var.key_name : null
   #vpc_security_group_ids = [aws_security_group.circleci_runner.id]
   network_interfaces {
     associate_public_ip_address = var.assign_public_ip
-    security_groups = [aws_security_group.circleci_runner.id]
+    security_groups             = [aws_security_group.circleci_runner.id]
 
   }
 

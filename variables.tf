@@ -16,22 +16,22 @@ variable "vpc_id" {
 }
 
 variable "subnet_list" {
-  type = list(string)
+  type        = list(string)
   description = "List of subnets into which runners will be deployed."
 }
 
 variable "asg_min_size" {
-  type = number
+  type        = number
   description = "Minimum number of runners."
 }
 
 variable "asg_max_size" {
-  type = number
+  type        = number
   description = "Maximum number of runners."
 }
 
 variable "asg_desired_size" {
-  type = number
+  type        = number
   description = "Desired number of runners."
 }
 
@@ -107,7 +107,7 @@ variable "assign_public_ip" {
 }
 
 variable "launch_template_version" {
-  type = string
-  default = "$Latest"
+  type        = string
+  default     = "$Latest"
   description = "Launch template version. Leave as default if you're not sure what to do."
 }
