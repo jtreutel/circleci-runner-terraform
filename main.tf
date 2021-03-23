@@ -37,13 +37,13 @@ data "aws_ami" "amazon_linux_2" {
 
 
 resource "aws_instance" "circleci_runner" {
-  count         = var.cluster_size
-  ami           = data.aws_ami.amazon_linux_2.id
-  instance_type = var.instance_size
-  subnet_id     = var.subnet_id
-  key_name      = var.key_name != "" ? var.key_name : null
+  count                       = var.cluster_size
+  ami                         = data.aws_ami.amazon_linux_2.id
+  instance_type               = var.instance_size
+  subnet_id                   = var.subnet_id
+  key_name                    = var.key_name != "" ? var.key_name : null
   associate_public_ip_address = var.assign_public_ip
-  security_groups = [aws_security_group.circleci_runner.id]
+  vpc_security_group_ids             = [aws_security_group.circleci_runner.id]
 
   root_block_device {
     volume_size = var.root_volume_size
