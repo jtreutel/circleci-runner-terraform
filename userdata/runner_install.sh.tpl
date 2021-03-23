@@ -12,10 +12,10 @@ prefix="/opt/circleci"                                  #Runner install director
 
 CONFIG_PATH="/opt/circleci/launch-agent-config.yaml"    #Determines where Runner config will be stored
 SERVICE_PATH="/opt/circleci/circleci.service"           #Determines where the Runner service definition will be stored
-
+TIMESTAMP=$(date +"%g%m%d-%H%M%S-%3N")                  #Used to avoid Runner naming collisions
 
 AUTH_TOKEN=${auth_token}
-RUNNER_NAME=${runner_name}
+RUNNER_NAME="${runner_name}-$TIMESTAMP"
 
 #-------------------------------------------------------------------------------
 # Update; install tools
