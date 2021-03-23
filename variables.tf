@@ -1,3 +1,57 @@
+#-------------------------------------------------------------------------------
+# REQUIRED VARS
+# Required input values without which the plan will not run.
+#-------------------------------------------------------------------------------
+
+
+
+variable "aws_region" {
+  type        = string
+  description = "Region in which Runners will be deployed.  us-east-1 is recommended as storage performance will be better."
+}
+
+variable "vpc_id" {
+  type        = string
+  description = "VPC into which the runners will be deployed."
+}
+
+variable "subnet_list" {
+  type = list(string)
+  description = "List of subnets into which runners will be deployed."
+}
+
+variable "asg_min_size" {
+  type = number
+  description = "Minimum number of runners."
+}
+
+variable "asg_max_size" {
+  type = number
+  description = "Maximum number of runners."
+}
+
+variable "asg_desired_size" {
+  type = number
+  description = "Desired number of runners."
+}
+
+#variable "subnet_id" {
+#  type        = string
+#  description = "Subnet into which the runners will be deployed."
+#}
+
+#variable "cluster_size" {
+#  type        = number
+#  default     = 1
+#  description = "Number of runners to create."
+#}
+
+#-------------------------------------------------------------------------------
+# OPTIONAL VARS
+# Default values supplied, but you should still review each one.
+#-------------------------------------------------------------------------------
+
+
 variable "resource_prefix" {
   type        = string
   default     = ""
@@ -7,19 +61,7 @@ variable "resource_prefix" {
 variable "extra_tags" {
   type        = map(string)
   default     = {}
-  description = "Optional list of additional tags to apply to CircleCI Runners and their EBS volumes."
-}
-
-variable "aws_region" {
-  type        = string
-  default     = "us-east-1"
-  description = "Region in which Runners will be deployed.  us-east-1 is recommended as storage performance will be better."
-}
-
-variable "cluster_size" {
-  type        = number
-  default     = 1
-  description = "Number of runners to create."
+  description = "Optional list of additional tags to apply to CircleCI Runners, EBS volumes, and Auto Scaling resources."
 }
 
 variable "instance_size" {
@@ -58,18 +100,14 @@ variable "outbound_cidrs" {
   description = "List of CIDRs to which traffic from the runners will be allowed.  If empty, all outbound traffic from the runners will be allowed."
 }
 
-variable "vpc_id" {
-  type        = string
-  description = "VPC into which the runners will be deployed."
-}
-
-variable "subnet_id" {
-  type        = string
-  description = "Subnet into which the runners will be deployed."
-}
-
 variable "assign_public_ip" {
   type        = bool
   default     = false
   description = "Set to true to assign public IPs to the runners."
+}
+
+variable "launch_template_version" {
+  type = string
+  default = "$Latest"
+  description = "Launch template version. Leave as default if you're not sure what to do."
 }
