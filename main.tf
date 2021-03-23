@@ -36,35 +36,89 @@ data "aws_ami" "amazon_linux_2" {
 }
 
 
-resource "aws_instance" "circleci_runner" {
-  count                       = var.cluster_size
-  ami                         = data.aws_ami.amazon_linux_2.id
-  instance_type               = var.instance_size
-  subnet_id                   = var.subnet_id
-  key_name                    = var.key_name != "" ? var.key_name : null
-  associate_public_ip_address = var.assign_public_ip
-  vpc_security_group_ids             = [aws_security_group.circleci_runner.id]
 
-  root_block_device {
-    volume_size = var.root_volume_size
-    volume_type = var.root_volume_type
+resource "aws_placement_group" "circleci_runner" {
+  name     = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-pg"
+  strategy = "spread"
+}
+
+resource "aws_autoscaling_group" "circleci_runner" {
+  name                      = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-asg"
+  max_size                  = var.asg_max_size
+  min_size                  = var.asg_min_size
+  health_check_grace_period = 300
+  health_check_type         = "EC2"
+  desired_capacity          = var.asg_desired_size
+  force_delete              = true
+  placement_group           = aws_placement_group.circleci_runner.id
+  vpc_zone_identifier       = var.subnet_list
+
+  launch_template {
+    id      = aws_launch_template.circleci_runner.id
+    version = var.launch_template_version
+  }
+
+
+  dynamic "tag" {
+    for_each = var.extra_tags
+		
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
+  }
+}
+
+
+
+
+
+
+
+resource "aws_launch_template" "circleci_runner" {
+  name = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-lt"
+
+  block_device_mappings {
+    device_name = "/dev/xvda" #this is usally the root volume mount point
+    ebs {
+      volume_size = var.root_volume_size
+      volume_type = var.root_volume_type
+      delete_on_termination = "true"
+    }
+  }
+
+  image_id = data.aws_ami.amazon_linux_2.id
+  instance_type = var.instance_size
+  key_name = var.key_name != "" ? var.key_name : null
+  #vpc_security_group_ids = [aws_security_group.circleci_runner.id]
+  network_interfaces {
+    associate_public_ip_address = var.assign_public_ip
+    security_groups = [aws_security_group.circleci_runner.id]
+
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
     tags = merge(
       var.extra_tags,
       {
-        Name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-%03d-root", count.index + 1)
+        Name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner")
       }
     )
-
   }
 
-  tags = merge(
-    var.extra_tags,
-    {
-      Name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-%03d", count.index + 1)
-    }
-  )
+  tag_specifications {
+    resource_type = "volume"
 
-  lifecycle {
-    ignore_changes = [ami] #to avoid undesired create/destroy of instances when a newer AMI is released.
+    tags = merge(
+      var.extra_tags,
+      {
+        Name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner")
+      }
+    )
   }
+
+  #user_data = filebase64("${path.module}/example.sh")
 }
