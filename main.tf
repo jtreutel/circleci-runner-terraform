@@ -121,12 +121,13 @@ resource "aws_launch_template" "circleci_runner" {
   }
 
   #user_data = filebase64("${path.module}/example.sh")
-  user_data = templatefile(
-    "${path.module}/userdata/runner_install.sh.tpl",
-    {
-      runner_name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner")
-      auth_token  = var.auth_token,
-    }
+  user_data = base64encode(
+    templatefile(
+      "${path.module}/userdata/runner_install.sh.tpl",
+      {
+        runner_name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner")
+        auth_token  = var.runner_auth_token
+      }
+    )
   )
-
 }
