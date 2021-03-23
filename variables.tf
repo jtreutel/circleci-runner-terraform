@@ -35,16 +35,10 @@ variable "asg_desired_size" {
   description = "Desired number of runners."
 }
 
-#variable "subnet_id" {
-#  type        = string
-#  description = "Subnet into which the runners will be deployed."
-#}
-
-#variable "cluster_size" {
-#  type        = number
-#  default     = 1
-#  description = "Number of runners to create."
-#}
+variable "runner_auth_token" {
+  type        = string
+  description = "Runner auth token.  See docs for how to generate one." #See https://circleci.com/docs/2.0/runner-installation/#authentication
+}
 
 #-------------------------------------------------------------------------------
 # OPTIONAL VARS
