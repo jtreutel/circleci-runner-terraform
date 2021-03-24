@@ -2,6 +2,13 @@ version: 2.1
 orbs:
   terraform: circleci/terraform@1.3.1
 
+commands:
+  reattach:
+    steps:
+      - attach_workspace:
+         at: .
+
+
 jobs:
   checkout:
     docker: 
@@ -12,23 +19,29 @@ jobs:
           root: ./
           paths:
             - . 
+  fmt:
+    executor: terraform/default
+    steps:
+      - reattach
+      - terraform/fmt
   validate:
     executor: terraform/default
     steps:
-      - attach_workspace:
-         at: .
-      - terraform/fmt
+      - reattach
       - terraform/validate
   sandbox-deploy:
     executor: terraform/default
     steps:
-      - attach_workspace:
-         at: .
+      - reattach
       - terraform/apply
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - ./terraform.tfstate
   sandbox-cleanup:
     executor: terraform/default
     steps:
-      - checkout
+      - reattach
       - terraform/destroy
 
 workflows:
@@ -36,6 +49,9 @@ workflows:
   main:
     jobs:
       - checkout
+      - fmt:
+          requires: 
+            - checkout
       - validate:
           context: tf-testing
           requires: 
