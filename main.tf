@@ -4,6 +4,8 @@ resource "aws_security_group" "circleci_runner" {
   name        = "%{if var.resource_prefix != ""}${var.resource_prefix} %{endif}CircleCI Runner SG"
   description = "Allows outbound traffic, optionally allows inbound SSH."
   vpc_id      = var.vpc_id
+
+  tags = var.extra_tags
 }
 resource "aws_security_group_rule" "allow_inbound_ssh" {
   count             = var.inbound_cidrs != null ? 1 : 0
@@ -40,6 +42,8 @@ data "aws_ami" "amazon_linux_2" {
 resource "aws_placement_group" "circleci_runner" {
   name     = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-pg"
   strategy = "spread"
+
+  tags = var.extra_tags
 }
 
 resource "aws_autoscaling_group" "circleci_runner" {
@@ -96,6 +100,15 @@ resource "aws_launch_template" "circleci_runner" {
     associate_public_ip_address = var.assign_public_ip
     security_groups             = [aws_security_group.circleci_runner.id]
   }
+  user_data = base64encode(
+    templatefile(
+      "${path.module}/userdata/runner_install.sh.tpl",
+      {
+        runner_name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner")
+        auth_token  = var.runner_auth_token
+      }
+    )
+  )
 
   tag_specifications {
     resource_type = "instance"
@@ -119,14 +132,5 @@ resource "aws_launch_template" "circleci_runner" {
     )
   }
 
-  #user_data = filebase64("${path.module}/example.sh")
-  user_data = base64encode(
-    templatefile(
-      "${path.module}/userdata/runner_install.sh.tpl",
-      {
-        runner_name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner")
-        auth_token  = var.runner_auth_token
-      }
-    )
-  )
+  tags = var.extra_tags
 }
