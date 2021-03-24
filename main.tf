@@ -88,14 +88,13 @@ resource "aws_launch_template" "circleci_runner" {
     }
   }
 
+  ebs_optimized = true
   image_id      = data.aws_ami.amazon_linux_2.id
   instance_type = var.instance_size
   key_name      = var.key_name != "" ? var.key_name : null
-  #vpc_security_group_ids = [aws_security_group.circleci_runner.id]
   network_interfaces {
     associate_public_ip_address = var.assign_public_ip
     security_groups             = [aws_security_group.circleci_runner.id]
-
   }
 
   tag_specifications {
