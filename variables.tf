@@ -7,7 +7,7 @@
 
 variable "aws_region" {
   type        = string
-  description = "Region in which Runners will be deployed.  us-east-1 is recommended as storage performance will be better."
+  description = "Region in which Runners will be deployed."
 }
 
 variable "vpc_id" {
