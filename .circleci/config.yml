@@ -5,7 +5,7 @@ orbs:
 jobs:
   checkout:
     docker: 
-      - image: cimg/base:2021.3
+      - image: cimg/base:2021.03
     steps:
       - checkout   
       - persist_to_workspace:
