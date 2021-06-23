@@ -1,0 +1,29 @@
+#-------------------------------------------------------------------------------
+# REQUIRED VARS
+# Required input values without which the plan will not run.
+#-------------------------------------------------------------------------------
+
+aws_region        = ""
+vpc_id            = ""
+subnet_list       = []
+asg_min_size      = ""
+asg_max_size      = ""
+asg_desired_size  = ""
+runner_auth_token = ""
+
+
+#-------------------------------------------------------------------------------
+# OPTIONAL VARS
+# Default values supplied, but you should still review each one.
+#-------------------------------------------------------------------------------
+
+#resource_prefix         = ""
+#extra_tags              = {}
+#instance_size           = "t3.large"
+#root_volume_size        = "100"
+#root_volume_type        = "gp3"
+#key_name                = ""
+#inbound_cidrs           = []
+#outbound_cidrs          = []
+#assign_public_ip        = false
+#launch_template_version = "$Latest"
