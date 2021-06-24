@@ -14,7 +14,8 @@ jobs:
     docker: 
       - image: cimg/base:2021.03
     steps:
-      - checkout   
+      - checkout
+      - run: base64 --decode $BASE64_TFVARS > ./testing.auto.tfvars
       - persist_to_workspace:
           root: ./
           paths:
@@ -65,6 +66,7 @@ workflows:
               only:
                 - master
                 - main
+                - dev
       - hold:
           type: approval
           requires:
