@@ -15,6 +15,12 @@ Terraform plan to deploy a CircleCI Runner cluster.
 4. Run `terraform apply` to apply changes
 5. Verify that runners are registered with your CircleCI org by using the command `circleci runner instance list <your-org-namespace-here>`
 
+**Optional:** If you would like to do a sandbox deploy to test the Terraform plan, follow these steps:
+
+1. Enter the necessary values in terraform.tfvars.example and save your changes
+2. Run the following bash command: `base64 terraform.tfvars.example`
+3. Store the output in a context or project-level variable named BASE64_TFVARS.
+
 
 ## Resources Created by Terraform
 
