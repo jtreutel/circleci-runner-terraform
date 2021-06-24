@@ -15,7 +15,7 @@ jobs:
       - image: cimg/base:2021.03
     steps:
       - checkout
-      - run: base64 --decode $BASE64_TFVARS > ./testing.auto.tfvars
+      - run: echo $BASE64_TFVARS | base64 --decode > ./testing.auto.tfvars
       - persist_to_workspace:
           root: ./
           paths:
