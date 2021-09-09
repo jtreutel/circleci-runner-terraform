@@ -49,7 +49,7 @@ variable "runner_auth_token" {
 variable "resource_prefix" {
   type        = string
   default     = ""
-  description = "Optional prefix to add to runner Name tag."
+  description = "Optional prefix to add to runner Name tag. We recommend including the resource class name here or in an extra tag."
 }
 
 variable "extra_tags" {
@@ -103,5 +103,5 @@ variable "assign_public_ip" {
 variable "launch_template_version" {
   type        = string
   default     = "$Latest"
-  description = "Launch template version. Leave as default if you're not sure what to do."
+  description = "Launch template version. Leave as default unless you have a specific reason to change this."
 }
