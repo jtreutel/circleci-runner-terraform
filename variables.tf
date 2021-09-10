@@ -40,6 +40,16 @@ variable "runner_auth_token" {
   description = "Runner auth token.  See docs for how to generate one." #See https://circleci.com/docs/2.0/runner-installation/#authentication
 }
 
+variable "circle_token" {
+  type        = string
+  description = "CircleCI API token.  See docs for how to generate one." #See https://circleci.com/docs/2.0/managing-api-tokens/
+}
+
+variable "resource_class" {
+  type        = string
+  description = "Name of the runner cluster resource class.¥, e.g. acmecorp/xlarge"
+}
+
 #-------------------------------------------------------------------------------
 # OPTIONAL VARS
 # Default values supplied, but you should still review each one.
