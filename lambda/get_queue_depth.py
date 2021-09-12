@@ -3,6 +3,8 @@ from botocore.exceptions import ClientError
 
 secret_name   = os.environ['SECRET_NAME']
 secret_region = os.environ['SECRET_REGION']
+metric_name = os.environ['METRIC_NAME']
+metric_namespace = os.environ['METRIC_NAMESPACE']
 
 def get_secret(secret_name, secret_region):
 
@@ -59,23 +61,23 @@ def get_queue_depth(url, headers):
     
     
 
-def send_metric_data_to_cw(data):
+def send_metric_data_to_cw(data, resource_class):
     cloudwatch = boto3.client('cloudwatch')
     cloudwatch.put_metric_data(
             MetricData = [
                 {
-                    'MetricName': 'Queue Depth',
+                    'MetricName': metric_name,
                     'Dimensions': [
                         {
                             'Name': 'CircleCI Runner',
-                            'Value': 'foo/bar'
+                            'Value': resource_class
                         },
                     ],
-                    'Unit': 'None',
+                    'Unit': 'Queued jobs',
                     'Value': data
                 },
             ],
-            Namespace = 'CircleCI'
+            Namespace = metric_namespace
         )
     
 
@@ -86,5 +88,5 @@ def lambda_handler(event, context):
     headers = {'Circle-Token': secrets['circle_token']}
     
     result = get_queue_depth(endpoint_url, headers)
-    send_metric_data_to_cw(result["unclaimed_task_count"])
+    send_metric_data_to_cw(result["unclaimed_task_count"], secrets['resource_class'])
     return result["unclaimed_task_count"]
