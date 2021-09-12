@@ -52,10 +52,36 @@ variable "resource_class" {
   sensitive   = true
 }
 
+variable "scaling_triggers" {
+  type = list(
+    object(
+      {
+        alarm_period         = number
+        alarm_threshold      = number
+        asg_scale_percentage = number
+        asg_scale_cooldown   = number
+      }
+    )
+  )
+
+  #The below default is provided as an example only -- please consider your scaling needs and write appropriate alarms and scaling policies.
+  # In this example, the cloudwatch alarm will trigger when the job queue depth is at >= 3 for 120 seconds.  Auto scaling will scale the cluster out by 50% of its current size and then wait 300 seconds before scaling again using this policy.
+  default = [
+    {
+      alarm_period         = 120
+      alarm_threshold      = 3
+      asg_scale_percentage = 50
+      asg_scale_cooldown   = 300
+    }
+  ]
+  description = "A list of objects that define Cloudwatch alarms and EC2 auto scaling policies used to autoscale the runner cluster."
+}
+
 #-------------------------------------------------------------------------------
 # OPTIONAL VARS
 # Default values supplied, but you should still review each one.
 #-------------------------------------------------------------------------------
+
 
 
 variable "resource_prefix" {
@@ -122,4 +148,16 @@ variable "launch_template_version" {
   type        = string
   default     = "$Latest"
   description = "Launch template version. Leave as default unless you have a specific reason to change this."
+}
+
+variable "metric_namespace" {
+  type        = string
+  default     = "CircleCI"
+  description = "Cloudwatch metric namespace to which job queue depth metrics will be written."
+}
+
+variable "metric_name" {
+  type        = string
+  default     = "Job Queue Depth"
+  description = "Name given to Cloudwatch job queue depth metric."
 }
