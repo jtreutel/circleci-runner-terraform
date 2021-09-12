@@ -110,6 +110,12 @@ variable "assign_public_ip" {
   description = "Set to true to assign public IPs to the runners."
 }
 
+variable "secrets_manager_kms_key_id" {
+  type        = string
+  default     = ""
+  description = "KMS key that will be used to encrypt"
+}
+
 variable "launch_template_version" {
   type        = string
   default     = "$Latest"

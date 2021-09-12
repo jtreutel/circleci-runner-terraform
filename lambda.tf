@@ -85,10 +85,18 @@ resource "aws_secretsmanager_secret" "queue_depth_lambda_secrets" {
 
 resource "aws_secretsmanager_secret_version" "queue_depth_lambda_secrets" {
   secret_id = aws_secretsmanager_secret.queue_depth_lambda_secrets.id
+  kms_key_id = var.secrets_manager_kms_key_id != "" ? var.secrets_manager_kms_key_id : aws_kms_key.queue_depth_lambda_secrets.id
+
   secret_string = jsonencode(
     {
       "circle_token" : "${var.circle_token}",
       "resource_class" : "${var.resource_class}"
     }
   )
+}
+
+resource "aws_kms_key" "queue_depth_lambda_secrets" {
+  count = var.secrets_manager_kms_key_id != "" ? 0 : 1
+  description             = "For encrypting secrets used by CircleCI Runner lambda function."
+  deletion_window_in_days = 14
 }
