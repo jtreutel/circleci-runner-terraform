@@ -66,9 +66,10 @@ resource "aws_lambda_function" "queue_depth" {
   # Used by the Lambda function to find the CircleCI API token and Runner resource class stored in Secrets Manager
   environment {
     variables = {
-      SECRET_NAME   = aws_secretsmanager_secret_version.queue_depth_lambda_secrets.id,
-      SECRET_REGION = data.aws_region.current.name
-      METRIC        = var.metric_name
+      SECRET_NAME      = aws_secretsmanager_secret_version.queue_depth_lambda_secrets.id,
+      SECRET_REGION    = data.aws_region.current.name
+      METRIC_NAME      = var.metric_name
+      METRIC_NAMESPACE = var.metric_namespace
     }
   }
 }
@@ -87,12 +88,12 @@ resource "aws_cloudwatch_log_group" "queue_depth_lambda" {
 
 
 resource "aws_secretsmanager_secret" "queue_depth_lambda_secrets" {
-  name = "${var.resource_prefix}-circleci-runner-lambda-secrets"
+  name       = "${var.resource_prefix}-circleci-runner-lambda-secrets"
   kms_key_id = var.secrets_manager_kms_key_id != "" ? var.secrets_manager_kms_key_id : aws_kms_key.queue_depth_lambda_secrets[0].id
 }
 
 resource "aws_secretsmanager_secret_version" "queue_depth_lambda_secrets" {
-  secret_id  = aws_secretsmanager_secret.queue_depth_lambda_secrets.id
+  secret_id = aws_secretsmanager_secret.queue_depth_lambda_secrets.id
   secret_string = jsonencode(
     {
       "circle_token" : var.circle_token,
