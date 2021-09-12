@@ -115,7 +115,7 @@ variable "assign_public_ip" {
 variable "secrets_manager_kms_key_id" {
   type        = string
   default     = ""
-  description = "KMS key that will be used to encrypt"
+  description = "KMS key that will be used to encrypt secrets containing CircleCI API token and resource class.  WARNING!  If empty, Terraform will create a KMS CMK that allows all AWS account users to decrypt these secrets."
 }
 
 variable "launch_template_version" {
