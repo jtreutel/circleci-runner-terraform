@@ -43,11 +43,13 @@ variable "runner_auth_token" {
 variable "circle_token" {
   type        = string
   description = "CircleCI API token.  See docs for how to generate one." #See https://circleci.com/docs/2.0/managing-api-tokens/
+  sensitive   = true
 }
 
 variable "resource_class" {
   type        = string
-  description = "Name of the runner cluster resource class.¥, e.g. acmecorp/xlarge"
+  description = "Name of the runner cluster resource class, e.g. acmecorp/xlarge"
+  sensitive   = true
 }
 
 #-------------------------------------------------------------------------------
