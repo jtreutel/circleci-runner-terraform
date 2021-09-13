@@ -17,3 +17,9 @@ data "archive_file" "queue_depth_function" {
   output_file_mode = "0666"
   output_path      = "${path.module}/lambda/get_queue_depth.zip"
 }
+
+data "aws_kms_key" "existing_key" {
+  count = var.secrets_manager_kms_key_id != "" ? 1 : 0
+
+  key_id = var.secrets_manager_kms_key_id
+}
