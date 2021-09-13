@@ -11,7 +11,7 @@
             "Sid": "VisualEditor1",
             "Effect": "Allow",
             "Action": "secretsmanager:GetSecretValue",
-            "Resource": ${secret_arn}
+            "Resource": "${secret_arn}"
         },
         {
             "Sid": "VisualEditor2",
@@ -21,7 +21,7 @@
                 "logs:CreateLogStream",
                 "logs:PutLogEvents"
             ],
-            "Resource": ${log_group_arn}
+            "Resource": "${log_group_arn}"
         }
     ]
 }
