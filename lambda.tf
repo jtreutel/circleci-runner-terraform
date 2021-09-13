@@ -42,7 +42,7 @@ resource "aws_iam_policy" "queue_depth_lambda_role" {
     {
       secret_arn    = aws_secretsmanager_secret.queue_depth_lambda_secrets.arn,
       log_group_arn = aws_cloudwatch_log_group.queue_depth_lambda.arn,
-      kms_key_arn    = var.secrets_manager_kms_key_id != "" ? data.aws_kms_key.existing_key[0].arn : aws_kms_key.queue_depth_lambda_secrets[0].arn
+      kms_key_arn   = var.secrets_manager_kms_key_id != "" ? data.aws_kms_key.existing_key[0].arn : aws_kms_key.queue_depth_lambda_secrets[0].arn
     }
   )
 }
@@ -122,16 +122,20 @@ resource "aws_kms_key" "queue_depth_lambda_secrets" {
 resource "aws_cloudwatch_metric_alarm" "queue_depth" {
   count = length(var.scaling_triggers)
 
-  alarm_name                = "${var.resource_prefix}-circleci-runner-queue-depth-${var.scaling_triggers[count.index]["alarm_threshold"]}"
-  comparison_operator       = "GreaterThanOrEqualToThreshold"
-  evaluation_periods        = "1"
-  metric_name               = var.metric_name
-  namespace                 = var.metric_namespace
-  period                    = var.scaling_triggers[count.index]["alarm_period"]
-  statistic                 = "Average"
-  threshold                 = var.scaling_triggers[count.index]["alarm_threshold"]
-  alarm_description         = "Trigger to scale out CircleCI runner cluster."
-  alarm_actions             = [element(aws_autoscaling_policy.queue_depth.*.arn, count.index)]
+  alarm_name          = "${var.resource_prefix}-circleci-runner-queue-depth-${var.scaling_triggers[count.index]["alarm_threshold"]}"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "1"
+  metric_name         = var.metric_name
+  namespace           = var.metric_namespace
+  period              = var.scaling_triggers[count.index]["alarm_period"]
+  statistic           = "Average"
+  threshold           = var.scaling_triggers[count.index]["alarm_threshold"]
+  alarm_description   = "Trigger to scale out CircleCI runner cluster."
+  alarm_actions       = [element(aws_autoscaling_policy.queue_depth.*.arn, count.index)]
+
+  dimensions = {
+    "CircleCI Runner" = "jtreutel/runner-test"
+  }
 }
 
 
@@ -157,4 +161,12 @@ resource "aws_cloudwatch_event_rule" "run_queue_depth_lambda" {
 resource "aws_cloudwatch_event_target" "run_queue_depth_lambda" {
   rule = aws_cloudwatch_event_rule.run_queue_depth_lambda.name
   arn  = aws_lambda_function.queue_depth.arn
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.queue_depth.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.run_queue_depth_lambda.arn #"arn:aws:events:eu-west-1:111122223333:rule/RunDaily"
 }
