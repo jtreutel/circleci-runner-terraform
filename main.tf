@@ -26,18 +26,6 @@ resource "aws_security_group_rule" "allow_outbound" {
 }
 
 
-data "aws_ami" "amazon_linux_2" {
-  most_recent = true
-
-  owners = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-ebs"]
-  }
-}
-
-
 
 resource "aws_placement_group" "circleci_runner" {
   name     = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-pg"
