@@ -41,7 +41,8 @@ resource "aws_iam_policy" "queue_depth_lambda_role" {
     "${path.module}/iam/lambda_policy.json.tpl",
     {
       secret_arn    = aws_secretsmanager_secret.queue_depth_lambda_secrets.arn,
-      log_group_arn = aws_cloudwatch_log_group.queue_depth_lambda.arn
+      log_group_arn = aws_cloudwatch_log_group.queue_depth_lambda.arn,
+      kms_key_arn    = var.secrets_manager_kms_key_id != "" ? data.aws_kms_key.existing_key[0].arn : aws_kms_key.queue_depth_lambda_secrets[0].arn
     }
   )
 }
@@ -66,7 +67,7 @@ resource "aws_lambda_function" "queue_depth" {
   # Used by the Lambda function to find the CircleCI API token and Runner resource class stored in Secrets Manager
   environment {
     variables = {
-      SECRET_NAME      = aws_secretsmanager_secret_version.queue_depth_lambda_secrets.id,
+      SECRET_NAME      = aws_secretsmanager_secret.queue_depth_lambda_secrets.name,
       SECRET_REGION    = data.aws_region.current.name
       METRIC_NAME      = var.metric_name
       METRIC_NAMESPACE = var.metric_namespace
@@ -103,9 +104,14 @@ resource "aws_secretsmanager_secret_version" "queue_depth_lambda_secrets" {
 }
 
 resource "aws_kms_key" "queue_depth_lambda_secrets" {
-  count                   = var.secrets_manager_kms_key_id != "" ? 0 : 1
+  count = var.secrets_manager_kms_key_id != "" ? 0 : 1
+
   description             = "For encrypting secrets used by CircleCI Runner lambda function."
   deletion_window_in_days = 14
+
+  tags = {
+    Name = "${var.resource_prefix}-circleci-runner-queue-depth-secrets-key"
+  }
 }
 
 
@@ -116,7 +122,7 @@ resource "aws_kms_key" "queue_depth_lambda_secrets" {
 resource "aws_cloudwatch_metric_alarm" "queue_depth" {
   count = length(var.scaling_triggers)
 
-  alarm_name                = "${var.resource_prefix}-circleci-runner-queue-depth-${var.scaling_triggers[count.index]["asg_scale_percentage"]}"
+  alarm_name                = "${var.resource_prefix}-circleci-runner-queue-depth-${var.scaling_triggers[count.index]["alarm_threshold"]}"
   comparison_operator       = "GreaterThanOrEqualToThreshold"
   evaluation_periods        = "1"
   metric_name               = var.metric_name
@@ -132,7 +138,7 @@ resource "aws_cloudwatch_metric_alarm" "queue_depth" {
 resource "aws_autoscaling_policy" "queue_depth" {
   count = length(var.scaling_triggers)
 
-  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-at-${var.scaling_triggers[count.index]["asg_scale_percentage"]}"
+  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-at-${var.scaling_triggers[count.index]["alarm_threshold"]}"
   scaling_adjustment     = var.scaling_triggers[count.index]["asg_scale_percentage"]
   adjustment_type        = "PercentChangeInCapacity"
   cooldown               = var.scaling_triggers[count.index]["asg_scale_cooldown"]
