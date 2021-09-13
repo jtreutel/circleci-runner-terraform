@@ -131,7 +131,7 @@ resource "aws_cloudwatch_metric_alarm" "queue_depth" {
   statistic                 = "Average"
   threshold                 = var.scaling_triggers[count.index]["alarm_threshold"]
   alarm_description         = "Trigger to scale out CircleCI runner cluster."
-  insufficient_data_actions = []
+  alarm_actions             = [element(aws_autoscaling_policy.queue_depth.*.arn, count.index)]
 }
 
 
