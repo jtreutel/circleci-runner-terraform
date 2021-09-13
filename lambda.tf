@@ -54,12 +54,12 @@ resource "aws_iam_role_policy_attachment" "test-attach" {
 
 
 resource "aws_lambda_function" "queue_depth" {
-  filename      = "${path.cwd}/lambda/function.zip"
+  filename      = "${path.cwd}/lambda/get_queue_depth.zip"
   function_name = "${var.resource_prefix}-circleci-runner-queue-depth-monitor"
   role          = aws_iam_role.queue_depth_lambda_role.arn
-  handler       = "index.test"
+  handler       = "get_queue_depth.lambda_handler"
 
-  source_code_hash = filebase64sha256("${path.cwd}/lambda/function.zip")
+  source_code_hash = filebase64sha256("${path.cwd}/lambda/get_queue_depth.zip")
 
   runtime = "python3.8"
 
@@ -114,28 +114,28 @@ resource "aws_kms_key" "queue_depth_lambda_secrets" {
 
 
 resource "aws_cloudwatch_metric_alarm" "queue_depth" {
-  for_each = var.scaling_triggers
+  count = length(var.scaling_triggers)
 
-  alarm_name                = "${var.resource_prefix}-circleci-runner-queue-depth-${each.value.alarm_threshold}"
+  alarm_name                = "${var.resource_prefix}-circleci-runner-queue-depth-${var.scaling_triggers[count.index]["asg_scale_percentage"]}"
   comparison_operator       = "GreaterThanOrEqualToThreshold"
   evaluation_periods        = "1"
   metric_name               = var.metric_name
   namespace                 = var.metric_namespace
-  period                    = each.value.alarm_period
+  period                    = var.scaling_triggers[count.index]["alarm_period"]
   statistic                 = "Average"
-  threshold                 = each.value.alarm_threshold
+  threshold                 = var.scaling_triggers[count.index]["alarm_threshold"]
   alarm_description         = "Trigger to scale out CircleCI runner cluster."
   insufficient_data_actions = []
 }
 
 
 resource "aws_autoscaling_policy" "queue_depth" {
-  for_each = aws_cloudwatch_metric_alarm.queue_depth
+  count = length(var.scaling_triggers)
 
-  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-at-${each.value.asg_scale_percentage}"
-  scaling_adjustment     = each.value.asg_scale_percentage
+  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-at-${var.scaling_triggers[count.index]["asg_scale_percentage"]}"
+  scaling_adjustment     = var.scaling_triggers[count.index]["asg_scale_percentage"]
   adjustment_type        = "PercentChangeInCapacity"
-  cooldown               = each.value.asg_scale_cooldown
+  cooldown               = var.scaling_triggers[count.index]["asg_scale_cooldown"]
   autoscaling_group_name = aws_autoscaling_group.circleci_runner.name
 }
 
