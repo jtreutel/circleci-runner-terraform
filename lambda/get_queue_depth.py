@@ -73,7 +73,7 @@ def send_metric_data_to_cw(data, resource_class):
                             'Value': resource_class
                         },
                     ],
-                    'Unit': 'Queued jobs',
+                    'Unit': 'None',
                     'Value': data
                 },
             ],
