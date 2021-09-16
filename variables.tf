@@ -52,35 +52,72 @@ variable "resource_class" {
   sensitive   = true
 }
 
-variable "scaling_triggers" {
-  type = list(
-    object(
-      {
-        alarm_period         = number
-        alarm_threshold      = number
-        asg_scale_percentage = number
-        asg_scale_cooldown   = number
-      }
-    )
-  )
-
-  #The below default is provided as an example only -- please consider your scaling needs and write appropriate alarms and scaling policies.
-  # In this example, the cloudwatch alarm will trigger when the job queue depth is at >= 3 for 120 seconds.  Auto scaling will scale the cluster out by 50% of its current size and then wait 300 seconds before scaling again using this policy.
-  default = [
-    {
-      alarm_period         = 120
-      alarm_threshold      = 3
-      asg_scale_percentage = 50
-      asg_scale_cooldown   = 300
-    }
-  ]
-  description = "A list of objects that define Cloudwatch alarms and EC2 auto scaling policies used to autoscale the runner cluster."
-}
 
 #-------------------------------------------------------------------------------
 # OPTIONAL VARS
 # Default values supplied, but you should still review each one.
 #-------------------------------------------------------------------------------
+
+variable "asg_adjustment_type" {
+  type    = string
+  default = "ChangeInCapacity"
+}
+
+variable "asg_scale_out_triggers" {
+  type = list(
+    object(
+      {
+        scaling_adjustment          = number
+        metric_interval_lower_bound = number
+        metric_interval_upper_bound = number
+      }
+    )
+  )
+
+  # The below default value is provided as an example only.
+  # Please configure appropriate alarms and scaling policies for your specific requirements.
+  default = [
+    {
+      scaling_adjustment          = 1
+      metric_interval_lower_bound = 0.0
+      metric_interval_upper_bound = 2.0
+    },
+    {
+      scaling_adjustment          = 2
+      metric_interval_lower_bound = 2.0
+      metric_interval_upper_bound = 4.0
+    },
+    {
+      scaling_adjustment          = 3
+      metric_interval_lower_bound = 4.0
+      metric_interval_upper_bound = null
+    }
+  ]
+  description = "A list of objects that define thresholds for scaling out the runner cluster."
+}
+
+variable "asg_scale_in_triggers" {
+  type = list(
+    object(
+      {
+        scaling_adjustment          = number
+        metric_interval_lower_bound = number
+        metric_interval_upper_bound = number
+      }
+    )
+  )
+
+  # The below default value is provided as an example only.
+  # Please configure appropriate alarms and scaling policies for your specific requirements.
+  default = [
+    {
+      scaling_adjustment          = -1
+      metric_interval_lower_bound = null
+      metric_interval_upper_bound = 0.0
+    }
+  ]
+  description = "A list of objects that define thresholds for scaling in the runner cluster."
+}
 
 
 

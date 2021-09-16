@@ -1,28 +1,8 @@
 /*
-Stuff to create
-
-[X] IAM policy
-[X] IAM role
-[X] IAM role policy attachment
-
-[X] CW alarms
-[X] ASG scaling policies
-
-[X] AWS secrets mgr secrets
-[X] KMS key
-
-[X] Lambda function
-[X] CW log group
-[X] CW scheduled event
-
-
-VARS:
-
 
 TODO: 
 Add tags to everything
 Fix resource names -- dash between resource prefix and "circleci"
-
 
 */
 
@@ -47,7 +27,7 @@ resource "aws_iam_policy" "queue_depth_lambda_role" {
   )
 }
 
-resource "aws_iam_role_policy_attachment" "test-attach" {
+resource "aws_iam_role_policy_attachment" "queue_depth_lambda_role" {
   role       = aws_iam_role.queue_depth_lambda_role.name
   policy_arn = aws_iam_policy.queue_depth_lambda_role.arn
 }
@@ -119,36 +99,79 @@ resource "aws_kms_key" "queue_depth_lambda_secrets" {
 
 
 
-resource "aws_cloudwatch_metric_alarm" "queue_depth" {
-  count = length(var.scaling_triggers)
+resource "aws_cloudwatch_metric_alarm" "scale_out" {
+  #count = length(var.scaling_triggers)
 
-  alarm_name          = "${var.resource_prefix}-circleci-runner-queue-depth-${var.scaling_triggers[count.index]["alarm_threshold"]}"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
+  alarm_name          = "${var.resource_prefix}-circleci-runner-cluster-scale-out"
+  comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "1"
   metric_name         = var.metric_name
   namespace           = var.metric_namespace
-  period              = var.scaling_triggers[count.index]["alarm_period"]
+  period              = 60
   statistic           = "Average"
-  threshold           = var.scaling_triggers[count.index]["alarm_threshold"]
+  threshold           = 0
   alarm_description   = "Trigger to scale out CircleCI runner cluster."
-  alarm_actions       = [element(aws_autoscaling_policy.queue_depth.*.arn, count.index)]
+  alarm_actions       = [aws_autoscaling_policy.scale_out.arn]
 
   dimensions = {
-    "CircleCI Runner" = "jtreutel/runner-test"
+    "CircleCI Runner" = var.resource_class
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "scale_in" {
+  #count = length(var.scaling_triggers)
+
+  alarm_name          = "${var.resource_prefix}-circleci-runner-cluster-scale-in"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = "5"
+  metric_name         = var.metric_name
+  namespace           = var.metric_namespace
+  period              = 60
+  statistic           = "Average"
+  threshold           = 0
+  alarm_description   = "Trigger to scale in CircleCI runner cluster."
+  alarm_actions       = [aws_autoscaling_policy.scale_in.arn]
+
+  dimensions = {
+    "CircleCI Runner" = var.resource_class
   }
 }
 
 
-resource "aws_autoscaling_policy" "queue_depth" {
-  count = length(var.scaling_triggers)
 
-  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-at-${var.scaling_triggers[count.index]["alarm_threshold"]}"
-  scaling_adjustment     = var.scaling_triggers[count.index]["asg_scale_percentage"]
-  adjustment_type        = "PercentChangeInCapacity"
-  cooldown               = var.scaling_triggers[count.index]["asg_scale_cooldown"]
+resource "aws_autoscaling_policy" "scale_out" {
+
+  name                   = "${var.resource_prefix}-circleci-runner-cluster-step-scale-in-scaling" #"${var.resource_prefix}-circleci-runner-cluster-scale-at-${var.scaling_triggers[count.index]["alarm_threshold"]}"
+  adjustment_type        = "ChangeInCapacity"
   autoscaling_group_name = aws_autoscaling_group.circleci_runner.name
+  policy_type = "StepScaling"
+
+  dynamic "step_adjustment" {
+    for_each = var.asg_scale_out_triggers
+    content {
+      scaling_adjustment          = step_adjustment.value["scaling_adjustment"]
+      metric_interval_lower_bound = step_adjustment.value["metric_interval_lower_bound"]
+      metric_interval_upper_bound = step_adjustment.value["metric_interval_upper_bound"]
+    }
+  }
 }
 
+resource "aws_autoscaling_policy" "scale_in" {
+
+  name                   = "${var.resource_prefix}-circleci-runner-cluster-step-scaling" #"${var.resource_prefix}-circleci-runner-cluster-scale-at-${var.scaling_triggers[count.index]["alarm_threshold"]}"
+  adjustment_type        = "ChangeInCapacity"
+  autoscaling_group_name = aws_autoscaling_group.circleci_runner.name
+  policy_type = "StepScaling"
+
+  dynamic "step_adjustment" {
+    for_each = var.asg_scale_in_triggers
+    content {
+      scaling_adjustment          = step_adjustment.value["scaling_adjustment"]
+      metric_interval_lower_bound = step_adjustment.value["metric_interval_lower_bound"]
+      metric_interval_upper_bound = step_adjustment.value["metric_interval_upper_bound"]
+    }
+  }
+}
 
 
 resource "aws_cloudwatch_event_rule" "run_queue_depth_lambda" {
