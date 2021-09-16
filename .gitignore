@@ -32,3 +32,5 @@ override.tf.json
 #Ignore local testing tfvars
 testing.auto.tfvars
 lambda/get_queue_depth.zip
+.terraform.lock.hcl
+
