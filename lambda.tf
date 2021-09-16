@@ -66,10 +66,19 @@ resource "aws_cloudwatch_log_group" "queue_depth_lambda" {
 
 
 resource "aws_secretsmanager_secret" "queue_depth_lambda_secrets" {
-  name       = "${var.resource_prefix}-circleci-runner-lambda-secrets"
+  name       = "${var.resource_prefix}-circleci-runner-lambda-secrets-${random_string.random.result}"
   kms_key_id = var.secrets_manager_kms_key_id != "" ? var.secrets_manager_kms_key_id : aws_kms_key.queue_depth_lambda_secrets[0].id
 
   tags = var.extra_tags
+}
+
+resource "random_string" "random" {
+  length           = 8
+  special          = false
+
+  keepers = {
+    secret_manager_id = aws_secretsmanager_secret.queue_depth_lambda_secrets.id
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "queue_depth_lambda_secrets" {
