@@ -30,32 +30,102 @@ variable "asg_max_size" {
   description = "Maximum number of runners."
 }
 
-variable "asg_desired_size" {
-  type        = number
-  description = "Desired number of runners."
-}
-
 variable "runner_auth_token" {
   type        = string
   description = "Runner auth token.  See docs for how to generate one." #See https://circleci.com/docs/2.0/runner-installation/#authentication
 }
+
+variable "circle_token" {
+  type        = string
+  description = "CircleCI API token.  See docs for how to generate one." #See https://circleci.com/docs/2.0/managing-api-tokens/
+  sensitive   = true
+}
+
+variable "resource_class" {
+  type        = string
+  description = "Name of the runner cluster resource class, e.g. acmecorp/xlarge"
+  sensitive   = true
+}
+
 
 #-------------------------------------------------------------------------------
 # OPTIONAL VARS
 # Default values supplied, but you should still review each one.
 #-------------------------------------------------------------------------------
 
+variable "asg_adjustment_type" {
+  type    = string
+  default = "ChangeInCapacity"
+}
+
+variable "asg_scale_out_triggers" {
+  type = list(
+    object(
+      {
+        scaling_adjustment          = number
+        metric_interval_lower_bound = number
+        metric_interval_upper_bound = number
+      }
+    )
+  )
+
+  # The below default value is provided as an example only.
+  # Please configure appropriate alarms and scaling policies for your specific requirements.
+  default = [
+    {
+      scaling_adjustment          = 1
+      metric_interval_lower_bound = 0.0
+      metric_interval_upper_bound = 2.0
+    },
+    {
+      scaling_adjustment          = 2
+      metric_interval_lower_bound = 2.0
+      metric_interval_upper_bound = 4.0
+    },
+    {
+      scaling_adjustment          = 3
+      metric_interval_lower_bound = 4.0
+      metric_interval_upper_bound = null
+    }
+  ]
+  description = "A list of objects that define thresholds for scaling out the runner cluster."
+}
+
+variable "asg_scale_in_triggers" {
+  type = list(
+    object(
+      {
+        scaling_adjustment          = number
+        metric_interval_lower_bound = number
+        metric_interval_upper_bound = number
+      }
+    )
+  )
+
+  # The below default value is provided as an example only.
+  # Please configure appropriate alarms and scaling policies for your specific requirements.
+  default = [
+    {
+      scaling_adjustment          = -1
+      metric_interval_lower_bound = null
+      metric_interval_upper_bound = 0.0
+    }
+  ]
+  description = "A list of objects that define thresholds for scaling in the runner cluster."
+}
+
+
 
 variable "resource_prefix" {
   type        = string
-  default     = ""
-  description = "Optional prefix to add to runner Name tag."
+  default     = "default"
+  description = "Optional prefix to add to runner Name tag. We recommend including the resource class name here or in an extra tag."
 }
 
 variable "extra_tags" {
   type        = map(string)
   default     = {}
-  description = "Optional list of additional tags to apply to CircleCI Runners, EBS volumes, and Auto Scaling resources."
+  description = "Optional list of additional tags to apply to all resources."
 }
 
 variable "instance_size" {
@@ -100,8 +170,26 @@ variable "assign_public_ip" {
   description = "Set to true to assign public IPs to the runners."
 }
 
+variable "secrets_manager_kms_key_id" {
+  type        = string
+  default     = ""
+  description = "KMS key that will be used to encrypt secrets containing CircleCI API token and resource class.  WARNING!  If empty, Terraform will create a KMS CMK that allows all AWS account users to decrypt these secrets."
+}
+
 variable "launch_template_version" {
   type        = string
   default     = "$Latest"
-  description = "Launch template version. Leave as default if you're not sure what to do."
+  description = "Launch template version. Leave as default unless you have a specific reason to change this."
+}
+
+variable "metric_namespace" {
+  type        = string
+  default     = "CircleCI"
+  description = "Cloudwatch metric namespace to which job queue depth metrics will be written."
+}
+
+variable "metric_name" {
+  type        = string
+  default     = "Job Queue Depth"
+  description = "Name given to Cloudwatch job queue depth metric."
 }
