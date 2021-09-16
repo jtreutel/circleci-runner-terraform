@@ -123,14 +123,14 @@ variable "asg_scale_in_triggers" {
 
 variable "resource_prefix" {
   type        = string
-  default     = ""
+  default     = "default"
   description = "Optional prefix to add to runner Name tag. We recommend including the resource class name here or in an extra tag."
 }
 
 variable "extra_tags" {
   type        = map(string)
   default     = {}
-  description = "Optional list of additional tags to apply to CircleCI Runners, EBS volumes, and Auto Scaling resources."
+  description = "Optional list of additional tags to apply to all resources."
 }
 
 variable "instance_size" {
