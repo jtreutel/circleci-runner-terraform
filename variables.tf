@@ -30,11 +30,6 @@ variable "asg_max_size" {
   description = "Maximum number of runners."
 }
 
-variable "asg_desired_size" {
-  type        = number
-  description = "Desired number of runners."
-}
-
 variable "runner_auth_token" {
   type        = string
   description = "Runner auth token.  See docs for how to generate one." #See https://circleci.com/docs/2.0/runner-installation/#authentication
