@@ -1,10 +1,3 @@
-/*
-
-TODO: 
-Add tags to everything
-Fix resource names -- dash between resource prefix and "circleci"
-
-*/
 
 resource "aws_iam_role" "queue_depth_lambda_role" {
   name = "${var.resource_prefix}-circleci-runner-lambda"
