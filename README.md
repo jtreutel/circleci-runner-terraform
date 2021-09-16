@@ -24,12 +24,25 @@ Terraform plan to deploy a CircleCI Runner cluster.
 
 ## Resources Created by Terraform
 
-- aws_autoscaling_group.circleci_runner
-- aws_launch_template.circleci_runner
-- aws_placement_group.circleci_runner
 - aws_security_group.circleci_runner
 - aws_security_group_rule.allow_inbound_ssh
 - aws_security_group_rule.allow_outbound
+- aws_placement_group.circleci_runner
+- aws_autoscaling_group.circleci_runner
+- aws_launch_template.circleci_runner
+- aws_iam_role.queue_depth_lambda_role
+- aws_iam_policy.queue_depth_lambda_role
+- aws_iam_role_policy_attachment.queue_depth_lambda_role
+- aws_lambda_function.queue_depth
+- aws_cloudwatch_log_group.queue_depth_lambda
+- aws_secretsmanager_secret.queue_depth_lambda_secrets
+- aws_secretsmanager_secret_version.queue_depth_lambda_secrets
+- aws_kms_key.queue_depth_lambda_secrets
+- aws_cloudwatch_metric_alarm.queue_depth
+- aws_autoscaling_policy.queue_depth
+- aws_cloudwatch_event_rule.run_queue_depth_lambda
+- aws_cloudwatch_event_target.run_queue_depth_lambda
+- aws_lambda_permission.allow_cloudwatch
 
 ## Terraform Variables
 
@@ -44,6 +57,9 @@ Terraform plan to deploy a CircleCI Runner cluster.
 |asg_max_size|none|Maximum number of runners.|
 |asg_desired_size|none|Desired number of runners.|
 |runner_auth_token|none|Runner auth token.  [See docs for how to generate one.](https://circleci.com/docs/2.0/runner-installation/#authentication)|
+|circle_token|none|CircleCI auth token.  [See docs for how to generate one.](https://circleci.com/docs/2.0/managing-api-tokens/)|
+
+
 
 ### Optional
 
@@ -55,7 +71,10 @@ Terraform plan to deploy a CircleCI Runner cluster.
 |root_volume_size|`100`|Runner root volume size.|
 |root_volume_type|`gp3`|Runner root volume type.|
 |key_name|`""`|Name of EC2 key pair that will be used when creating the instances.  If blank, you will not be able to SSH into the Runners.|
-|inbound_cidrs|`null`|List of CIDRs from which SSH traffic to the runners will be allowed.  If empty, no SSH traffic will be allowed.|
-|outbound_cidrs|`null`|List of CIDRs to which traffic from the runners will be allowed.  If empty, all outbound traffic from the runners will be allowed.|
+|inbound_cidrs|`[]`|List of CIDRs from which SSH traffic to the runners will be allowed.  If empty, no SSH traffic will be allowed.|
+|outbound_cidrs|`[]`|List of CIDRs to which traffic from the runners will be allowed.  If empty, all outbound traffic from the runners will be allowed.|
 |assign_public_ip|`false`|Set to true to assign public IPs to the runners.|
+|asg_adjustment_type|`ChangeInCapacity`|Determines whether to scale in/out as a percentage or using capacity units.|
+|asg_scaling_triggers|See variables.tf|Determines the job queue thresholds by which scaling actions are triggered as well as how much to scale.|
+|secrets_manager_kms_key_id|`""`|ID of an existing KMS key to encrypt your CircleCI token and resource class. If blank, a new one will be created.|
 |launch_template_version|`$Latest`|Launch template version. Leave as default if you're not sure what to do.|
