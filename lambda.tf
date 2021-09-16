@@ -73,11 +73,12 @@ resource "aws_secretsmanager_secret" "queue_depth_lambda_secrets" {
 }
 
 resource "random_string" "random" {
-  length           = 8
-  special          = false
+  length  = 8
+  special = false
 
   keepers = {
-    secret_manager_id = aws_secretsmanager_secret.queue_depth_lambda_secrets.id
+    circle_token   = var.circle_token
+    resource_class = var.resource_class
   }
 }
 
