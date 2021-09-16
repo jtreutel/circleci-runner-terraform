@@ -40,7 +40,6 @@ resource "aws_autoscaling_group" "circleci_runner" {
   min_size                  = var.asg_min_size
   health_check_grace_period = 300
   health_check_type         = "EC2"
-  desired_capacity          = var.asg_desired_size
   force_delete              = true
   placement_group           = aws_placement_group.circleci_runner.id
   vpc_zone_identifier       = var.subnet_list
