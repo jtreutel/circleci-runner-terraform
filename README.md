@@ -38,8 +38,11 @@ Terraform plan to deploy a CircleCI Runner cluster.
 - aws_secretsmanager_secret.queue_depth_lambda_secrets
 - aws_secretsmanager_secret_version.queue_depth_lambda_secrets
 - aws_kms_key.queue_depth_lambda_secrets
-- aws_cloudwatch_metric_alarm.queue_depth
-- aws_autoscaling_policy.queue_depth
+- aws_kms_alias.queue_depth_lambda_secrets
+- aws_cloudwatch_metric_alarm.scale_out
+- aws_cloudwatch_metric_alarm.scale_in
+- aws_autoscaling_policy.scale_out
+- aws_autoscaling_policy.scale_in
 - aws_cloudwatch_event_rule.run_queue_depth_lambda
 - aws_cloudwatch_event_target.run_queue_depth_lambda
 - aws_lambda_permission.allow_cloudwatch
