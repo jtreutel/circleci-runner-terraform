@@ -141,10 +141,10 @@ resource "aws_cloudwatch_metric_alarm" "scale_in" {
 
 resource "aws_autoscaling_policy" "scale_out" {
 
-  name                   = "${var.resource_prefix}-circleci-runner-cluster-step-scale-in-scaling" #"${var.resource_prefix}-circleci-runner-cluster-scale-at-${var.scaling_triggers[count.index]["alarm_threshold"]}"
+  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-out"
   adjustment_type        = "ChangeInCapacity"
   autoscaling_group_name = aws_autoscaling_group.circleci_runner.name
-  policy_type = "StepScaling"
+  policy_type            = "StepScaling"
 
   dynamic "step_adjustment" {
     for_each = var.asg_scale_out_triggers
@@ -158,10 +158,10 @@ resource "aws_autoscaling_policy" "scale_out" {
 
 resource "aws_autoscaling_policy" "scale_in" {
 
-  name                   = "${var.resource_prefix}-circleci-runner-cluster-step-scaling" #"${var.resource_prefix}-circleci-runner-cluster-scale-at-${var.scaling_triggers[count.index]["alarm_threshold"]}"
+  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-in"
   adjustment_type        = "ChangeInCapacity"
   autoscaling_group_name = aws_autoscaling_group.circleci_runner.name
-  policy_type = "StepScaling"
+  policy_type            = "StepScaling"
 
   dynamic "step_adjustment" {
     for_each = var.asg_scale_in_triggers
