@@ -26,18 +26,6 @@ resource "aws_security_group_rule" "allow_outbound" {
 }
 
 
-data "aws_ami" "amazon_linux_2" {
-  most_recent = true
-
-  owners = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-ebs"]
-  }
-}
-
-
 
 resource "aws_placement_group" "circleci_runner" {
   name     = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-pg"
@@ -52,7 +40,6 @@ resource "aws_autoscaling_group" "circleci_runner" {
   min_size                  = var.asg_min_size
   health_check_grace_period = 300
   health_check_type         = "EC2"
-  desired_capacity          = var.asg_desired_size
   force_delete              = true
   placement_group           = aws_placement_group.circleci_runner.id
   vpc_zone_identifier       = var.subnet_list

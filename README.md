@@ -9,27 +9,44 @@ Terraform plan to deploy a CircleCI Runner cluster.
 ## How to Use
 
 1. Create a namespace, resource class, and runner token as described in [the documentation.](https://circleci.com/docs/2.0/runner-installation/#authentication)
-1. Copy the terraform.tfvars.example file and replace required values
+1. Open `terraform.tfvars.example` and replace required values
 2. Check optional values to ensure the runners are configured appropriately for your use case
+3. (Optional, but strongly recommended) Add a [remote state backend](https://www.terraform.io/docs/language/settings/backends/index.html) to store your terraform state
 3. Run `terraform plan` and inspect proposed changes
 4. Run `terraform apply` to apply changes
 5. Verify that runners are registered with your CircleCI org by using the command `circleci runner instance list <your-org-namespace-here>`
 
-**Optional:** If you would like to do a sandbox deploy to test the Terraform plan, follow these steps:
+**Optional:** If you would like to do a sandbox deploy to test the Terraform plan using CircleCI, follow these steps:
 
 1. Enter the necessary values in terraform.tfvars.example and save your changes
-2. Run the following bash command: `base64 terraform.tfvars.example`
-3. Store the output in a context or project-level variable named BASE64_TFVARS.
+2. Run the following bash command: `base64 terraform.tfvars.example > base64_tfvars.txt`
+3. Store the output in a CircleCI context or project-level variable named BASE64_TFVARS.
 
 
 ## Resources Created by Terraform
 
-- aws_autoscaling_group.circleci_runner
-- aws_launch_template.circleci_runner
-- aws_placement_group.circleci_runner
 - aws_security_group.circleci_runner
 - aws_security_group_rule.allow_inbound_ssh
 - aws_security_group_rule.allow_outbound
+- aws_placement_group.circleci_runner
+- aws_autoscaling_group.circleci_runner
+- aws_launch_template.circleci_runner
+- aws_iam_role.queue_depth_lambda_role
+- aws_iam_policy.queue_depth_lambda_role
+- aws_iam_role_policy_attachment.queue_depth_lambda_role
+- aws_lambda_function.queue_depth
+- aws_cloudwatch_log_group.queue_depth_lambda
+- aws_secretsmanager_secret.queue_depth_lambda_secrets
+- aws_secretsmanager_secret_version.queue_depth_lambda_secrets
+- aws_kms_key.queue_depth_lambda_secrets
+- aws_kms_alias.queue_depth_lambda_secrets
+- aws_cloudwatch_metric_alarm.scale_out
+- aws_cloudwatch_metric_alarm.scale_in
+- aws_autoscaling_policy.scale_out
+- aws_autoscaling_policy.scale_in
+- aws_cloudwatch_event_rule.run_queue_depth_lambda
+- aws_cloudwatch_event_target.run_queue_depth_lambda
+- aws_lambda_permission.allow_cloudwatch
 
 ## Terraform Variables
 
@@ -44,6 +61,9 @@ Terraform plan to deploy a CircleCI Runner cluster.
 |asg_max_size|none|Maximum number of runners.|
 |asg_desired_size|none|Desired number of runners.|
 |runner_auth_token|none|Runner auth token.  [See docs for how to generate one.](https://circleci.com/docs/2.0/runner-installation/#authentication)|
+|circle_token|none|CircleCI auth token.  [See docs for how to generate one.](https://circleci.com/docs/2.0/managing-api-tokens/)|
+
+
 
 ### Optional
 
@@ -55,7 +75,10 @@ Terraform plan to deploy a CircleCI Runner cluster.
 |root_volume_size|`100`|Runner root volume size.|
 |root_volume_type|`gp3`|Runner root volume type.|
 |key_name|`""`|Name of EC2 key pair that will be used when creating the instances.  If blank, you will not be able to SSH into the Runners.|
-|inbound_cidrs|`null`|List of CIDRs from which SSH traffic to the runners will be allowed.  If empty, no SSH traffic will be allowed.|
-|outbound_cidrs|`null`|List of CIDRs to which traffic from the runners will be allowed.  If empty, all outbound traffic from the runners will be allowed.|
+|inbound_cidrs|`[]`|List of CIDRs from which SSH traffic to the runners will be allowed.  If empty, no SSH traffic will be allowed.|
+|outbound_cidrs|`[]`|List of CIDRs to which traffic from the runners will be allowed.  If empty, all outbound traffic from the runners will be allowed.|
 |assign_public_ip|`false`|Set to true to assign public IPs to the runners.|
+|asg_adjustment_type|`ChangeInCapacity`|Determines whether to scale in/out as a percentage or using capacity units.|
+|asg_scaling_triggers|See variables.tf|Determines the job queue thresholds by which scaling actions are triggered as well as how much to scale.|
+|secrets_manager_kms_key_id|`""`|ID of an existing KMS key to encrypt your CircleCI token and resource class. If blank, a new one will be created.|
 |launch_template_version|`$Latest`|Launch template version. Leave as default if you're not sure what to do.|
