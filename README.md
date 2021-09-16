@@ -9,8 +9,9 @@ Terraform plan to deploy a CircleCI Runner cluster.
 ## How to Use
 
 1. Create a namespace, resource class, and runner token as described in [the documentation.](https://circleci.com/docs/2.0/runner-installation/#authentication)
-1. Copy the terraform.tfvars.example file and replace required values
+1. Open `terraform.tfvars.example` and replace required values
 2. Check optional values to ensure the runners are configured appropriately for your use case
+3. (Optional, but strongly recommended) Add a [remote state backend](https://www.terraform.io/docs/language/settings/backends/index.html) to store your terraform state
 3. Run `terraform plan` and inspect proposed changes
 4. Run `terraform apply` to apply changes
 5. Verify that runners are registered with your CircleCI org by using the command `circleci runner instance list <your-org-namespace-here>`
