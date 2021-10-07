@@ -51,7 +51,7 @@ def get_secret(secret_name, secret_region):
             return(decoded_binary_secret)
             
 
-
+# Query CircleCI API for specified resource class's job queue depth
 def get_queue_depth(url, headers):
     http = urllib3.PoolManager()
     r = http.request('GET', url, headers=headers)
@@ -60,7 +60,7 @@ def get_queue_depth(url, headers):
     
     
     
-
+# Send resource queue depth to cloudwatch
 def send_metric_data_to_cw(data, resource_class):
     cloudwatch = boto3.client('cloudwatch')
     cloudwatch.put_metric_data(

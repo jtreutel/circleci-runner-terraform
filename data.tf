@@ -1,3 +1,8 @@
+#-------------------------------------------------------------------------------
+# DATA SOURCES
+# Required data requested from the AWS API to support creatin of other resources
+#-------------------------------------------------------------------------------
+
 data "aws_region" "current" {}
 
 data "aws_ami" "amazon_linux_2" {

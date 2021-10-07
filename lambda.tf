@@ -1,35 +1,10 @@
 
-resource "aws_iam_role" "queue_depth_lambda_role" {
-  name = "${var.resource_prefix}-circleci-runner-lambda"
-
-  assume_role_policy = file("${path.cwd}/iam/lambda_assume_role.json")
-
-  tags = var.extra_tags
-}
-
-resource "aws_iam_policy" "queue_depth_lambda_role" {
-  name        = "${var.resource_prefix}-circleci-runner-lambda"
-  path        = "/"
-  description = "Allows a Lambda function to check the CircleCI for the number of queued Runner jobs."
-
-  policy = templatefile(
-    "${path.module}/iam/lambda_policy.json.tpl",
-    {
-      secret_arn    = aws_secretsmanager_secret.queue_depth_lambda_secrets.arn,
-      log_group_arn = aws_cloudwatch_log_group.queue_depth_lambda.arn,
-      kms_key_arn   = var.secrets_manager_kms_key_id != "" ? data.aws_kms_key.existing_key[0].arn : aws_kms_key.queue_depth_lambda_secrets[0].arn
-    }
-  )
-
-  tags = var.extra_tags
-}
-
-resource "aws_iam_role_policy_attachment" "queue_depth_lambda_role" {
-  role       = aws_iam_role.queue_depth_lambda_role.name
-  policy_arn = aws_iam_policy.queue_depth_lambda_role.arn
-}
-
-
+#-------------------------------------------------------------------------------
+# LAMBDA FUNCTION & SUPPORTING RESOURCES
+# Lambda function, Cloudwatch log group for storing Lambda function output,
+# IAM resources so the Lambda can talk to other AWS services, Cloudwatch event
+# that runs the Lambda function every minute to check for queued jobs
+#-------------------------------------------------------------------------------
 
 resource "aws_lambda_function" "queue_depth" {
   filename      = "${path.cwd}/lambda/get_queue_depth.zip"
@@ -61,9 +36,65 @@ resource "aws_cloudwatch_log_group" "queue_depth_lambda" {
 }
 
 
+resource "aws_iam_role" "queue_depth_lambda_role" {
+  name = "${var.resource_prefix}-circleci-runner-lambda"
+
+  assume_role_policy = file("${path.cwd}/iam/lambda_assume_role.json")
+
+  tags = var.extra_tags
+}
+
+resource "aws_iam_policy" "queue_depth_lambda_role" {
+  name        = "${var.resource_prefix}-circleci-runner-lambda"
+  path        = "/"
+  description = "Allows a Lambda function to check the CircleCI for the number of queued Runner jobs."
+
+  policy = templatefile(
+    "${path.module}/iam/lambda_policy.json.tpl",
+    {
+      secret_arn    = aws_secretsmanager_secret.queue_depth_lambda_secrets.arn,
+      log_group_arn = aws_cloudwatch_log_group.queue_depth_lambda.arn,
+      kms_key_arn   = var.secrets_manager_kms_key_id != "" ? data.aws_kms_key.existing_key[0].arn : aws_kms_key.queue_depth_lambda_secrets[0].arn
+    }
+  )
+
+  tags = var.extra_tags
+}
+
+resource "aws_iam_role_policy_attachment" "queue_depth_lambda_role" {
+  role       = aws_iam_role.queue_depth_lambda_role.name
+  policy_arn = aws_iam_policy.queue_depth_lambda_role.arn
+}
 
 
+resource "aws_cloudwatch_event_rule" "run_queue_depth_lambda" {
+  name        = "${var.resource_prefix}-circleci-runner-queue-depth-lambda-trigger"
+  description = "Run a Lambda function every minute that polls the CircleCI API for the current runner job queue length."
 
+  schedule_expression = "rate(1 minute)"
+
+  tags = var.extra_tags
+}
+
+resource "aws_cloudwatch_event_target" "run_queue_depth_lambda" {
+  rule = aws_cloudwatch_event_rule.run_queue_depth_lambda.name
+  arn  = aws_lambda_function.queue_depth.arn
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.queue_depth.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.run_queue_depth_lambda.arn 
+}
+
+
+#-------------------------------------------------------------------------------
+# AWS SECRETS MANAGER RESOURCES
+# AWS Secrets Manager secret that stores the CircleCI API token and the name
+# of the target resource class.
+#-------------------------------------------------------------------------------
 
 resource "aws_secretsmanager_secret" "queue_depth_lambda_secrets" {
   name       = "${var.resource_prefix}-circleci-runner-lambda-secrets-${random_string.random.result}"
@@ -114,103 +145,5 @@ resource "aws_kms_alias" "queue_depth_lambda_secrets" {
 
 
 
-resource "aws_cloudwatch_metric_alarm" "scale_out" {
-  #count = length(var.scaling_triggers)
-
-  alarm_name          = "${var.resource_prefix}-circleci-runner-cluster-scale-out"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "1"
-  metric_name         = var.metric_name
-  namespace           = var.metric_namespace
-  period              = 60
-  statistic           = "Average"
-  threshold           = 0
-  alarm_description   = "Trigger to scale out CircleCI runner cluster."
-  alarm_actions       = [aws_autoscaling_policy.scale_out.arn]
-
-  dimensions = {
-    "CircleCI Runner" = var.resource_class
-  }
-
-  tags = var.extra_tags
-}
-
-resource "aws_cloudwatch_metric_alarm" "scale_in" {
-  #count = length(var.scaling_triggers)
-
-  alarm_name          = "${var.resource_prefix}-circleci-runner-cluster-scale-in"
-  comparison_operator = "LessThanOrEqualToThreshold"
-  evaluation_periods  = "5"
-  metric_name         = var.metric_name
-  namespace           = var.metric_namespace
-  period              = 60
-  statistic           = "Average"
-  threshold           = 0
-  alarm_description   = "Trigger to scale in CircleCI runner cluster."
-  alarm_actions       = [aws_autoscaling_policy.scale_in.arn]
-
-  dimensions = {
-    "CircleCI Runner" = var.resource_class
-  }
-
-  tags = var.extra_tags
-}
 
 
-
-resource "aws_autoscaling_policy" "scale_out" {
-
-  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-out"
-  adjustment_type        = "ChangeInCapacity"
-  autoscaling_group_name = aws_autoscaling_group.circleci_runner.name
-  policy_type            = "StepScaling"
-
-  dynamic "step_adjustment" {
-    for_each = var.asg_scale_out_triggers
-    content {
-      scaling_adjustment          = step_adjustment.value["scaling_adjustment"]
-      metric_interval_lower_bound = step_adjustment.value["metric_interval_lower_bound"]
-      metric_interval_upper_bound = step_adjustment.value["metric_interval_upper_bound"]
-    }
-  }
-}
-
-resource "aws_autoscaling_policy" "scale_in" {
-
-  name                   = "${var.resource_prefix}-circleci-runner-cluster-scale-in"
-  adjustment_type        = "ChangeInCapacity"
-  autoscaling_group_name = aws_autoscaling_group.circleci_runner.name
-  policy_type            = "StepScaling"
-
-  dynamic "step_adjustment" {
-    for_each = var.asg_scale_in_triggers
-    content {
-      scaling_adjustment          = step_adjustment.value["scaling_adjustment"]
-      metric_interval_lower_bound = step_adjustment.value["metric_interval_lower_bound"]
-      metric_interval_upper_bound = step_adjustment.value["metric_interval_upper_bound"]
-    }
-  }
-}
-
-
-resource "aws_cloudwatch_event_rule" "run_queue_depth_lambda" {
-  name        = "${var.resource_prefix}-circleci-runner-queue-depth-lambda-trigger"
-  description = "Run a Lambda function every minute that polls the CircleCI API for the current runner job queue length."
-
-  schedule_expression = "rate(1 minute)"
-
-  tags = var.extra_tags
-}
-
-resource "aws_cloudwatch_event_target" "run_queue_depth_lambda" {
-  rule = aws_cloudwatch_event_rule.run_queue_depth_lambda.name
-  arn  = aws_lambda_function.queue_depth.arn
-}
-
-resource "aws_lambda_permission" "allow_cloudwatch" {
-  statement_id  = "AllowExecutionFromCloudWatch"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.queue_depth.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.run_queue_depth_lambda.arn #"arn:aws:events:eu-west-1:111122223333:rule/RunDaily"
-}
