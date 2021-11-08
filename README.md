@@ -1,10 +1,38 @@
 # circleci-runner-terraform
-Terraform plan to deploy a CircleCI Runner cluster.
+Terraform plan to deploy an autoscaling CircleCI Runner cluster.
 
 ## Requirements
 
 - Terraform (>= 0.13.6)
 - CircleCI CLI (>= 0.1.11924)
+
+
+## Architecture
+
+The diagram below shows how the infrastructure deployed by thisTerraform plan works.  
+
+<div style="max-width: 800px" >
+<img src="arch_diagram.png" style="max-width:100%;" />
+</div>
+
+Some general notes about how the plan works:
+* An Auto Scaling group (ASG) will be deployed with a launch template for automatically installing Runner on Server.  
+    * The ASG will start with min/max values specified by the user when supplying variables for the Terraform plan.  
+* A Lambda function will also be deployed to check the CircleCI API for the current queue depth for the resource class represented by the servers running in the ASG.   
+    * This function will retrieve the queue depth value and post the value to Cloudwatch. 
+    * If a user-specified queue depth is exceeded, Cloudwatch will notify EC2 Auto Scaling to trigger a scale-out event.  
+    * When the queue depth is below a certain threshold for a certain (configurable) amount of time, Cloudwatch will notify EC2 Auto Scaling to trigger a scale-in event.  
+
+The scale-out process is shown by the numbers on the diagram, which represent these steps that occur in order:
+
+1. A cron-based Cloudwatch alarm triggers a Lambda function that will check the current queue depth.
+2. The Lambda function retrieves the user-supplied CircleCI API token and resource class name from AWS Secrets Manager using a KMS key.
+3. The Lambda function requests the current queue depth from the CircleCI Runner API.
+4. The queue depth value is sent to a Cloudwatch metric.
+5. A Cloudwatch alarm monitors the metric. 
+6. If the metric exceeds a specified threshold, it notifies the Auto Scaling group, which then executes a scaling action according to its policies. 
+
+
 
 ## How to Use
 
