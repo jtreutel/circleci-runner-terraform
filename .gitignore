@@ -33,4 +33,5 @@ override.tf.json
 testing.auto.tfvars
 lambda/get_queue_depth.zip
 .terraform.lock.hcl
-
+plan.json
+plan.out

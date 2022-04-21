@@ -1,3 +1,7 @@
+locals {
+  asg_name = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-asg"
+}
+
 data "aws_region" "current" {}
 
 data "aws_ami" "amazon_linux_2" {

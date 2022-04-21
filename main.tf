@@ -35,7 +35,7 @@ resource "aws_placement_group" "circleci_runner" {
 }
 
 resource "aws_autoscaling_group" "circleci_runner" {
-  name                      = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner-asg"
+  name                      = local.asg_name
   max_size                  = var.asg_max_size
   min_size                  = var.asg_min_size
   health_check_grace_period = 300
@@ -58,6 +58,17 @@ resource "aws_autoscaling_group" "circleci_runner" {
       value               = tag.value
       propagate_at_launch = true
     }
+  }
+
+  initial_lifecycle_hook {
+    name                 = "%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}linux-cci-runner-active-job-check"
+    lifecycle_transition = "autoscaling:EC2_INSTANCE_TERMINATING"
+
+    #notification_target_arn = "arn:aws:sqs:us-east-1:444455556666:queue1*"
+    #role_arn                = "arn:aws:iam::123456789012:role/S3Access"
+
+    default_result       = "CONTINUE" #If heartbeat timeout is reached, instance will still terminate, but subsequent lifecycle hooks are still allowed to run on the instance prior to termination
+    heartbeat_timeout    = 7200  #Instance will remaining in a "wait" state for up to 12 hours
   }
 }
 
@@ -103,7 +114,8 @@ resource "aws_launch_template" "circleci_runner" {
     tags = merge(
       var.extra_tags,
       {
-        Name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner")
+        Name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner"),
+        circleciRunner = "true"
       }
     )
   }
@@ -120,4 +132,148 @@ resource "aws_launch_template" "circleci_runner" {
   }
 
   tags = var.extra_tags
+}
+
+
+# Can't remember why this is here.
+#parameters {
+#  ASGName = local.asg_name
+#}
+
+resource "aws_ssm_document" "check_runner_agent_status" {
+  name            = "circleci-check-runner-agent-status"
+  document_format = "YAML"
+  document_type   = "Automation"
+
+  content = file("${path.module}/ssm/check_runner_agent.yml")
+}
+
+
+
+
+
+###
+# IAM Stuff for SSM
+###
+
+#Lets SSM run commands on EC2 instances and complete lifecycle hook actions
+resource "aws_iam_role" "ssm_actions" {
+  name = "${var.resource_prefix}-circleci-runner-ssm"
+
+  assume_role_policy = file("${path.cwd}/iam/ssm_assume_role.json")
+
+  tags = var.extra_tags
+}
+
+resource "aws_iam_policy" "ssm_asg_lifecycle_completion" {
+  name        = "${var.resource_prefix}-circleci-runner-ssm-asg-lifecycle-completion"
+  path        = "/"
+  description = "Allows SSM to complete lifecycle hook actions on CircleCI Runners."
+
+  policy = templatefile(
+    "${path.module}/iam/ssm_lifecycle_policy.json.tpl",
+    {
+      asg_arn = aws_autoscaling_group.circleci_runner.arn
+    }
+  )
+
+  tags = var.extra_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_asg_lifecycle_completion" {
+  role       = aws_iam_role.ssm_actions.name
+  policy_arn = aws_iam_policy.ssm_asg_lifecycle_completion.arn
+}
+
+
+resource "aws_iam_policy" "ssm_automation" {
+  name        = "${var.resource_prefix}-circleci-runner-ssm-automaton"
+  path        = "/"
+  description = "Allows SSM to run specific commands on CircleCI Runners."
+
+  policy = templatefile(
+    "${path.module}/iam/ssm_automation_policy.json.tpl",
+    {
+      aws_region = var.aws_region
+    }
+  )
+
+  tags = var.extra_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_automation" {
+  role       = aws_iam_role.ssm_actions.name
+  policy_arn = aws_iam_policy.ssm_automation.arn
+}
+
+
+#######
+# IAM Stuff for Cloudwatch Events
+#######
+
+resource "aws_iam_role" "cwe_invoke_ssm" {
+  name = "${var.resource_prefix}-circleci-runner-cwe"
+
+  assume_role_policy = file("${path.cwd}/iam/cwe_assume_role.json")
+
+  tags = var.extra_tags
+}
+
+resource "aws_iam_policy" "cwe_start_ssm_execution" {
+  name        = "${var.resource_prefix}-circleci-runner-cwe-start-ssm-execution"
+  path        = "/"
+  description = "Allows Cloudwatch Events to trigger SSM document execution."
+
+  policy = templatefile(
+    "${path.module}/iam/cwe_start_ssm_execution.json.tpl",
+    {
+      ssm_doc_arn = aws_ssm_document.check_runner_agent_status.arn
+    }
+  )
+
+  tags = var.extra_tags
+}
+
+resource "aws_iam_policy" "cwe_pass_role" {
+  name        = "${var.resource_prefix}-circleci-runner-cwe-pass-role"
+  path        = "/"
+  description = "Allows this role to assume the SSM automation role."
+
+  policy = templatefile(
+    "${path.module}/iam/cwe_pass_role.json.tpl",
+    {
+      ssm_automation_role_arn = aws_iam_role.ssm_actions.arn
+    }
+  )
+
+  tags = var.extra_tags
+}
+
+resource "aws_iam_role_policy_attachment" "cwe_start_ssm_execution" {
+  role       = aws_iam_role.cwe_invoke_ssm.name
+  policy_arn = aws_iam_policy.cwe_start_ssm_execution.arn
+}
+
+resource "aws_iam_role_policy_attachment" "cwe_pass_role" {
+  role       = aws_iam_role.cwe_invoke_ssm.name
+  policy_arn = aws_iam_policy.cwe_pass_role.arn
+}
+
+
+#########
+# Cloudwatch Events
+#########
+
+resource "aws_cloudwatch_event_rule" "trigger_" {
+  name        = "${var.resource_prefix}-circleci-runner-lifecycle-trigger"
+  description = "Trigger SSM automation to keep Runner alive when ASG tries to terminate it."
+
+  event_pattern = tojson(file("${path.module}/..."))
+
+  tags = var.extra_tags
+}
+
+resource "aws_cloudwatch_event_target" "run_queue_depth_lambda" {
+  rule = aws_cloudwatch_event_rule.run_queue_depth_lambda.name
+  arn  = aws_lambda_function.queue_depth.arn
 }
