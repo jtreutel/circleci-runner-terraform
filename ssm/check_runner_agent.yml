@@ -11,5 +11,5 @@ mainSteps:
       #  - 'ec2_instance_id_placeholder'
       Parameters:
         commands: |-
-          export PROGRAM="runner-agent"
-          if ps -C "$PROGRAM" > /dev/null; then echo "$(date "+%Y-%m-%d %H:%M:%S") Process $PROGRAM is running." | tee /tmp/circleci-runner-lifecycle-hook.log; PID=$(ps -C $PROGRAM -o pid= | sed 's/\ //g'); while kill -0 "$PID" 2>/dev/null; do echo "$(date "+%Y-%m-%d %H:%M:%S") Waiting for process $PROGRAM (PID $PID) to complete..." | tee /tmp/circleci-runner-lifecycle-hook.log; sleep 5; done; echo "$(date "+%Y-%m-%d %H:%M:%S") Process $PROGRAM exited. Proceeding with instance termination..." | tee /tmp/circleci-runner-lifecycle-hook.log; else echo "$(date "+%Y-%m-%d %H:%M:%S") Process $PROGRAM is not running." | tee /tmp/circleci-runner-lifecycle-hook.log; fi
+          export PROGRAM="circleci-launch"
+          if ps -C "$PROGRAM" > /dev/null; then echo "$(date "+%Y-%m-%d %H:%M:%S") Process $PROGRAM is running." | tee /tmp/circleci-runner-lifecycle-hook.log; PID=$(ps -C $PROGRAM -o pid= | sed 's/\ //g'); while sudo kill -0 "$PID" 2>/dev/null; do echo "$(date "+%Y-%m-%d %H:%M:%S") Waiting for process $PROGRAM (PID $PID) to complete..." | tee /tmp/circleci-runner-lifecycle-hook.log; sleep 5; done; echo "$(date "+%Y-%m-%d %H:%M:%S") Process $PROGRAM exited. Proceeding with instance termination..." | tee /tmp/circleci-runner-lifecycle-hook.log; else echo "$(date "+%Y-%m-%d %H:%M:%S") Process $PROGRAM is not running." | tee /tmp/circleci-runner-lifecycle-hook.log; fi
