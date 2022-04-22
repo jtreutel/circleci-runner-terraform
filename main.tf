@@ -67,8 +67,8 @@ resource "aws_autoscaling_group" "circleci_runner" {
     #notification_target_arn = "arn:aws:sqs:us-east-1:444455556666:queue1*"
     #role_arn                = "arn:aws:iam::123456789012:role/S3Access"
 
-    default_result       = "CONTINUE" #If heartbeat timeout is reached, instance will still terminate, but subsequent lifecycle hooks are still allowed to run on the instance prior to termination
-    heartbeat_timeout    = 7200  #Instance will remaining in a "wait" state for up to 12 hours
+    default_result    = "CONTINUE" #If heartbeat timeout is reached, instance will still terminate, but subsequent lifecycle hooks are still allowed to run on the instance prior to termination
+    heartbeat_timeout = 7200       #Instance will remaining in a "wait" state for up to 12 hours
   }
 }
 
@@ -104,6 +104,7 @@ resource "aws_launch_template" "circleci_runner" {
       {
         runner_name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner")
         auth_token  = var.runner_auth_token
+        runner_mode = var.runner_mode
       }
     )
   )
@@ -114,7 +115,7 @@ resource "aws_launch_template" "circleci_runner" {
     tags = merge(
       var.extra_tags,
       {
-        Name = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner"),
+        Name           = format("%{if var.resource_prefix != ""}${var.resource_prefix}-%{endif}circleci-runner"),
         circleciRunner = "true"
       }
     )
@@ -160,7 +161,7 @@ resource "aws_ssm_document" "check_runner_agent_status" {
 resource "aws_iam_role" "ssm_actions" {
   name = "${var.resource_prefix}-circleci-runner-ssm"
 
-  assume_role_policy = file("${path.cwd}/iam/ssm_assume_role.json")
+  assume_role_policy = file("${path.module}/iam/ssm_assume_role.json")
 
   tags = var.extra_tags
 }
@@ -214,7 +215,7 @@ resource "aws_iam_role_policy_attachment" "ssm_automation" {
 resource "aws_iam_role" "cwe_invoke_ssm" {
   name = "${var.resource_prefix}-circleci-runner-cwe"
 
-  assume_role_policy = file("${path.cwd}/iam/cwe_assume_role.json")
+  assume_role_policy = file("${path.module}/iam/cwe_assume_role.json")
 
   tags = var.extra_tags
 }
@@ -227,7 +228,7 @@ resource "aws_iam_policy" "cwe_start_ssm_execution" {
   policy = templatefile(
     "${path.module}/iam/cwe_start_ssm_execution.json.tpl",
     {
-      ssm_doc_arn = aws_ssm_document.check_runner_agent_status.arn
+      ssm_doc_arn = "${replace(aws_ssm_document.check_runner_agent_status.arn, "document/", "automation-definition/")}"
     }
   )
 
@@ -264,16 +265,35 @@ resource "aws_iam_role_policy_attachment" "cwe_pass_role" {
 # Cloudwatch Events
 #########
 
-resource "aws_cloudwatch_event_rule" "trigger_" {
+resource "aws_cloudwatch_event_rule" "trigger_on_ec2_termination" {
   name        = "${var.resource_prefix}-circleci-runner-lifecycle-trigger"
   description = "Trigger SSM automation to keep Runner alive when ASG tries to terminate it."
 
-  event_pattern = tojson(file("${path.module}/..."))
+  event_pattern = templatefile(
+    "${path.module}/cwe/ssm_event_target.json.tpl",
+    {
+      asg_name = aws_autoscaling_group.circleci_runner.name
+    }
+  )
 
   tags = var.extra_tags
 }
 
-resource "aws_cloudwatch_event_target" "run_queue_depth_lambda" {
-  rule = aws_cloudwatch_event_rule.run_queue_depth_lambda.name
-  arn  = aws_lambda_function.queue_depth.arn
+resource "aws_cloudwatch_event_target" "trigger_on_ec2_termination" {
+  arn      = replace(aws_ssm_document.check_runner_agent_status.arn, "document/", "automation-definition/")
+  rule     = aws_cloudwatch_event_rule.trigger_on_ec2_termination.id
+  role_arn = aws_iam_role.cwe_invoke_ssm.arn
+
+  input_transformer {
+    input_paths = {
+      asgname    = "$.detail.AutoScalingGroupName",
+      instanceid = "$.detail.EC2InstanceId",
+      lchname    = "$.detail.LifecycleHookName",
+    }
+    input_template = "{\"InstanceId\":[<instanceid>],\"ASGName\":[<asgname>],\"LCHName\":[<lchname>],\"automationAssumeRole\":[\"${aws_iam_role.ssm_actions.arn}\"]}"
+  }
 }
+
+#"${replace(aws_iam_role.ssm_actions.arn, "document/", "automation-definition/")}"
+#arn:aws:ssm:region:account-id:document/document_name
+#arn:aws:ssm:region:account-id:automation-definition/definitionName:version
