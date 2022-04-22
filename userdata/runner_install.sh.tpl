@@ -57,6 +57,7 @@ runner:
   command_prefix: ["sudo", "-niHu", "circleci", "--"]
   working_directory: /opt/circleci/workdir/%s
   cleanup_working_directory: true
+  mode: ${runner_mode}
 EOF
 
 # Set correct config file permissions and ownership
