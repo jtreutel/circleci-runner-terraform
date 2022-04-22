@@ -47,6 +47,16 @@ variable "resource_class" {
   sensitive   = true
 }
 
+#-------------------------------------------------------------------------------
+# RUNNER CONFIGURATION VARS
+# Configures the behavior of the runner agent. See https://circleci.com/docs/2.0/runner-config-reference/
+# Default values supplied, but you should still review each one.
+#-------------------------------------------------------------------------------
+
+variable "runner_mode" {
+  type    = string
+  default = "continuous"
+}
 
 #-------------------------------------------------------------------------------
 # OPTIONAL VARS
